@@ -40,6 +40,8 @@ class Media extends Model implements Responsable, Htmlable
 
     protected $guarded = [];
 
+    protected $appends = ['original_url', 'preview_url'];
+
     protected $casts = [
         'manipulations' => 'array',
         'custom_properties' => 'array',
@@ -226,14 +228,23 @@ class Media extends Model implements Responsable, Htmlable
         return $generatedConversions[$conversionName] ?? false;
     }
 
-
     public function toResponse($request)
+    {
+        return $this->buildResponse($request, 'attachment');
+    }
+
+    public function toInlineResponse($request)
+    {
+        return $this->buildResponse($request, 'inline');
+    }
+
+    private function buildResponse($request, string $contentDispositionType)
     {
         $downloadHeaders = [
             'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
             'Content-Type' => $this->mime_type,
             'Content-Length' => $this->size,
-            'Content-Disposition' => 'attachment; filename="' . $this->file_name . '"',
+            'Content-Disposition' => $contentDispositionType . '; filename="' . $this->file_name . '"',
             'Pragma' => 'public',
         ];
 
@@ -261,6 +272,16 @@ class Media extends Model implements Responsable, Htmlable
     public function getSrcset(string $conversionName = ''): string
     {
         return $this->responsiveImages($conversionName)->getSrcset();
+    }
+
+    public function getPreviewUrlAttribute()
+    {
+        return $this->hasGeneratedConversion('preview') ? $this->getUrl('preview') : '';
+    }
+
+    public function getOriginalUrlAttribute()
+    {
+        return $this->getUrl();
     }
 
     public function move(HasMedia $model, $collectionName = 'default', string $diskName = '', string $fileName = ''): self
